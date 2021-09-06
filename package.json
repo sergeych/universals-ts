@@ -1,0 +1,45 @@
+{
+  "name": "universals",
+  "version": "0.1.3",
+  "description": "universa-based tools",
+  "author": "Sergey Chernov <real.sergeych@gmail.com>",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "files": [
+    "dist/**/*"
+  ],
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "link": "yarn build && cd dist && yarn link",
+    "build": "tsc",
+    "full_build": "tsc && yarn docs",
+    "docs": "typedoc --excludePrivate --entryPoints src/index.ts",
+    "test": "jest --coverage",
+    "pub": "yarn build && yarn publish && bin/pubdocs"
+  },
+  "bin": {},
+  "dependencies": {
+    "isomorphic-fetch": "^3",
+    "unicrypto": "^1.8.4"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.14.0",
+    "@babel/types": "^7.14.0",
+    "@types/jest": "^25.2.3",
+    "@types/node": "^13.13.4",
+    "@typescript-eslint/eslint-plugin": "^4.22.0",
+    "@typescript-eslint/parser": "^4.22.0",
+    "eslint": "^7.25.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "form-data": "^4.0.0",
+    "husky": "^6.0.0",
+    "jest": "^25.5.3",
+    "lint-staged": "^10.5.4",
+    "prettier": "^2.2.1",
+    "ts-jest": "^26.5.5",
+    "typedoc": "^0.21.4",
+    "typescript": "^4.2.4"
+  }
+}
