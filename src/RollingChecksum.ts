@@ -102,7 +102,7 @@ export class RollingChecksum {
    * @param toIndex maximal index, exclusive
    * @return control calculated checksum
    */
-  static ofBlock(block: Uint8Array, fromIndex = 0, toIndex = block.length): number {
+  static ofBlock(block: ArrayLike<number>, fromIndex = 0, toIndex = block.length): number {
     let l = toIndex - 1
     let s1 = 0
     let s2 = 0

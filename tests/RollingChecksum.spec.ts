@@ -6,7 +6,6 @@ describe('rolling checksum', () => {
   it("calculates on a partial block", () => {
     const src = Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
     const a = RollingChecksum.ofBlock(src);
-    console.log(a);
     const rs = new RollingChecksum(1024, src);
     expect(rs.digest).toEqual(a);
   });
@@ -21,7 +20,6 @@ describe('rolling checksum', () => {
     const src = randomBytes(300);
     const a1 = RollingChecksum.ofBlock(src, 0, 256);
     const a2 = RollingChecksum.ofBlock(src, 10, 266);
-    console.log(a1, a2);
     const rs = new RollingChecksum(256, src);
     expect(rs.digest).toEqual(a1);
     for( let i = 256; i < 266; i++)
