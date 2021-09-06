@@ -1,8 +1,6 @@
-import { RingBuffer } from "../src/RingBuffer";
-import { CompletablePromise } from "../src/CompletablePromise";
-import { readFrom } from "../src/tools";
+import { CompletablePromise, readFromAsync, RingBuffer } from "../src";
 
-describe('universal tools', () => {
+describe('ring buffer', () => {
 
   it("runs sync ringbuffer", () => {
     const rb = new RingBuffer<number>(3)
@@ -74,11 +72,11 @@ describe('universal tools', () => {
     }
     writer();
 
-    let result = await readFrom(rb, 6);
+    let result = await readFromAsync(rb, 6);
     expect(rb.isClosed).toBeFalsy()
     expect(result).toEqual([0,1,2,3,4,5,])
 
-    result = await readFrom(rb, 20);
+    result = await readFromAsync(rb, 20);
     expect(rb.isClosed).toBeTruthy()
     expect(result).toEqual([6,7,8,9])
   })

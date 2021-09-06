@@ -3,144 +3,117 @@ import { RingBuffer } from "./RingBuffer";
 const M = 16;
 const MASK = 0xFFFF;
 
+function internalError(reason: string = "unknown reason"): never {
+  throw new Error(`RollingChecksum intenal error: ${reason}`);
+}
+
+/**
+ * The fast checksum capable of "sliding window" mode calculation, same as was used with rsync. It has very faset
+ * next-byte recalculation time, and relatively small size (should fit 64 bit) and should primarily be used to
+ * detect diffs in rsync-like applications.
+ *
+ * The basic usage is:
+ *
+ * - extract block of desired size from input source
+ * - construct RollingChecksum with it
+ * - process [[digest]] for current offset (0)
+ * - get next byte, increase offset, get new [[digest]], process it and so on.
+ *
+ */
 export class RollingChecksum {
   private rb: RingBuffer<number>;
+  private notFullyInitialized = true;
+
   /**
-   * Construct rolling checksum over a byte-stream iterator
-   * @param source
+   * Construct rolling checksum with initial data. Note that it should not be smaller than `blockSize` to be
+   * used in sliding-window mode. If the `startBlock` is shorter than `blockSize` then it will still calculate
+   * correct [[digest]] but [[update]] will throw error (it is impossible to calcu;late proper sliding window).
+   * @param blockSize desired block size
+   * @param startBlock initial block of data to control
+   * @package startBlock initia data to calculate digest. Usually is equal to blockSize.
    */
-  constructor(readonly blockSize: number,source: AsyncIterator<number>) {
-    if( blockSize != ~~blockSize ) throw new Error("Block size must be integer");
-    if( blockSize < 256 ) throw new Error("Block size must be > 256");
-    this.rb = new RingBuffer<number>(this.blockSize+100)
+  constructor(readonly blockSize: number, startBlock?: Uint8Array) {
+    const initialData = startBlock ? startBlock : new Uint8Array();
+    if (blockSize != ~~blockSize) throw new Error("Block size must be integer");
+    if (blockSize < 256) throw new Error("Block size must be >= 256");
+    this.rb = new RingBuffer<number>(this.blockSize + 10);
 
-    // const initialData = await readFrom(source, blockSize);
-    // if (blockSize > initialData.size) {
-    //   this.l = initialData.size - 1
-    // } else {
-    //   notFullyInitialized = false
-    //   blockSize - 1
-    // }
-    // var s1 = 0
-    // var s2 = 0
-    // for (i in 0..l) {
-    //   val x = initialData[i]
-    //   s1 += x
-    //   s2 += (l - i + 1) * x
-    //   rb.put(x)
-    // }
-    // k = 0
-    // a = s1 and MASK
-    // b = s2 and MASK
+    if (blockSize > initialData.length) {
+      this.l = initialData.length - 1
+    } else {
+      this.notFullyInitialized = false;
+      this.l = blockSize - 1;
+    }
+    let s1 = 0;
+    let s2 = 0;
 
+    for (let i = 0; i <= this.l; i++) {
+      const x = initialData[i];
+      s1 += x;
+      s2 += (this.l - i + 1) * x
+      this.rb.put(x)
+    }
+    this.k = 0;
+    this.a = s1 & MASK;
+    this.b = s2 & MASK;
   }
 
-  private bufferedSize = 0;
   private k = 0;
   private l = 0;
   private a: number;
   private b: number;
 
-  private get s(): number { return this.a + (this.b << M); }
+  /**
+   * Get current rolling checksum value. Could be called any time, any numebr of times. Is changed by
+   * [[update]]
+   */
+  get digest(): number {
+    return this.a + (this.b << M);
+  }
+
+  /**
+   * Update checksum by a byte (or several bytes, useful when testing). Changes [[digest]] property.
+   * @param bytes to update with
+   */
+  update(...bytes: number[]): RollingChecksum {
+    for (const nextByte of bytes) {
+      if (nextByte < 0 || nextByte > 255 || nextByte != ~~nextByte)
+        throw new Error("invalid next byte: " + nextByte);
+      if (this.notFullyInitialized)
+        throw new Error("RollingChecksum wat initialized with less data than a block holds and can not be updated");
+      const Xk = this.rb.tryGet();
+      if (Xk === undefined) internalError("rb should not be empty");
+      if (!this.rb.tryPut(nextByte)) internalError("tb should not be full");
+      this.a = (this.a - Xk + nextByte) & MASK;
+      this.b = (this.b - (this.l - this.k + 1) * Xk + this.a) & MASK;
+      this.k++;
+      this.l++;
+    }
+    return this;
+  }
+
+  /**
+   * Calculate rolling checksum for a portion of the data. It is preferred way to process a single isolated block,
+   * faster than sequence of [update] calls on non-overlapping blocks. When there are several overlapping blocks
+   * [update] approach should be more effective.
+   *
+   * @param block data to calculate control code with
+   * @param fromIndex minimal index, inclusive
+   * @param toIndex maximal index, exclusive
+   * @return control calculated checksum
+   */
+  static ofBlock(block: Uint8Array, fromIndex = 0, toIndex = block.length): number {
+    let l = toIndex - 1
+    let s1 = 0
+    let s2 = 0
+    for (let i = fromIndex; i <= l; i++) {
+      s1 += block[i]
+      s2 += (l - i + 1) * block[i]
+    }
+    const a = s1 & MASK
+    const b = s2 & MASK
+
+    return a + (b << M)
+  }
+
 }
-// class RollingChecksum(val blockSize: Int, initialData: ByteArray) {
-//
-//   /**
-//    * Construct rolling checksum by reading corresponding number of bytes or up to the file end. The [s] parameter
-//    * is valid after this call. Do not call update if the end of file is reached!
-//    */
-//   constructor(blockSize: Int, ins: InputStream) : this(blockSize, ins.readNBytes(blockSize))
-//
-//   private val rb = RingBuffer<Int>(blockSize + 100)
-//   private var bufferedSize: Int = 0
-//
-//   private var a: Int
-//   private var b: Int
-//   private var k: Int = 0
-//   private var l: Int = 0
-//
-//   private var notFullyInitialized = true
-//
-//   /**
-//    * The control sum value (hashcode), this is its historical name.
-//    */
-//   val s: Int get() = a + (b shl M)
-//
-//   /**
-//    * Same as [s] but from different tradition. Current checksum value
-//    */
-//   val digest by this::s
-//
-//   /**
-//    * Update with next byte. After the call the current sum could be immediately obtained:
-//    *
-//    *     rcs.update(nextByte).s
-//    *
-//    * @throws IllegalStateException if called after _partial initialization_, e.g. if constructed with initial data
-//    *              that are shorter than the block size.
-//    */
-//   fun update(nextByte: Byte): RollingChecksum {
-//     if (notFullyInitialized)
-//       throw IllegalStateException("was not initialized with a full-sized block, partial checksum is Ok but can't be updated")
-//     val Xk = rb.get().toInt()
-//     rb.put(nextByte)
-//     a = (a - Xk + nextByte) and MASK
-//     b = (b - (l - k + 1) * Xk + a) and MASK
-//     k++; l++
-//     return this
-//   }
-//
-//   /**
-//    * Same as [update] to work with int representation, commonly used in I/O routines.
-//    */
-//   fun update(nexByte: Int): RollingChecksum = update(nexByte.toByte())
-//
-//   init {
-//     l = if (blockSize > initialData.size) {
-//       initialData.size - 1
-//     } else {
-//       notFullyInitialized = false
-//       blockSize - 1
-//     }
-//     var s1 = 0
-//     var s2 = 0
-//     for (i in 0..l) {
-//       val x = initialData[i]
-//       s1 += x
-//       s2 += (l - i + 1) * x
-//       rb.put(x)
-//     }
-//     k = 0
-//     a = s1 and MASK
-//     b = s2 and MASK
-//   }
-//
-//   companion object {
-//     const val M = 16
-//     const val MASK = 0xFFFF
-//
-//     /**
-//      * Calculate checksum for a portion of the data. It is preferred way to process a single isolated block, it
-//      * is still faster than sequence of [update] calls on non-overlapping blocks. If blocks are overlapping,
-//      * [update] approach should be more effective.
-//      *
-//      * @param x data to calculate control code with
-//      * @param fomIndex minimal index, inclusive
-//      * @param toIndex maximal index, exclusive
-//      * @return control calculated checksum
-//      */
-//     fun ofBlock(x: ByteArray, fomIndex: Int = 0, toIndex: Int = x.size): Int {
-//       val l = toIndex - 1
-//       var s1 = 0
-//       var s2 = 0
-//       for (i in fomIndex..l) {
-//         s1 += x[i]
-//         s2 += (l - i + 1) * x[i]
-//       }
-//       val a = s1 and MASK
-//       val b = s2 and MASK
-//
-//       return a + (b shl M)
-//     }
-//   }
-// }

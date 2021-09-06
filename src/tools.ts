@@ -1,4 +1,4 @@
-import { AbstractKey, encode64, PrivateKey, PublicKey, SymmetricKey } from "unicrypto";
+import { encode64 } from "unicrypto";
 
 export function encode64Compact(data: Uint8Array): string {
   const source = encode64(data);
@@ -33,11 +33,30 @@ export function isEmptyObjectOrMap(obj: any): boolean {
  * @param source to read from
  * @param length maximum number of elements
  */
-export async function readFrom<T>(source: AsyncIterable<T>,length: number): Promise<T[]> {
+export async function readFromAsync<T>(source: AsyncIterable<T>, length: number): Promise<T[]> {
+  return await readFromAsyncIterator(source[Symbol.asyncIterator](),length);
+}
+
+export function readFrom<T>(source: Iterable<T>, length: number): T[] {
+  return readFromIterator(source[Symbol.iterator](),length);
+}
+
+export async function readFromAsyncIterator<T>(source: AsyncIterator<T>, length: number): Promise<T[]> {
   const result = new Array<T>();
-  for await(const x of source) {
-    result.push(x)
-    if( result.length >= length) break;
+  while(result.length < length) {
+    const x = await source.next();
+    if( x.done ) break;
+    result.push(x.value);
+  }
+  return result;
+}
+
+export function readFromIterator<T>(source: Iterator<T>, length: number): T[] {
+  const result = new Array<T>();
+  while(result.length < length) {
+    const x = source.next();
+    if( x.done ) break;
+    result.push(x.value);
   }
   return result;
 }
