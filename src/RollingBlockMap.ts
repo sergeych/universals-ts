@@ -1,6 +1,7 @@
 import { equalArrays, readFromAsyncIterator } from "./tools";
-import { RollingChecksum } from "./RollingChecksum";
+import { RollingChecksum } from "./blockmap/RollingChecksum";
 import { Boss, SHA } from "unicrypto";
+import { BinarySource } from "./ubio/BinarySource";
 
 export type BlockHashes = [number, Uint8Array];
 
@@ -53,7 +54,8 @@ export class RollingBlockMap {
     return new RollingBlockMap(br.read() as BlockMapData);
   }
 
-  static async scan(source: AsyncIterable<number>, blockSize = 1024): Promise<RollingBlockMap> {
+  static async scan(source: BinarySource, blockSize = 1024): Promise<RollingBlockMap> {
+
     const blocks = new Array<BlockHashes>();
     let part: Uint8Array;
     const it = source[Symbol.asyncIterator]();

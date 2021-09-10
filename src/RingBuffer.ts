@@ -132,7 +132,7 @@ export class RingBuffer<T extends any | null> implements AsyncIterable<T> {
     const cp = new CompletablePromise<void>();
     this.#readQueue.push(cp);
     await cp;
-    return this.tryGet();
+    return  this.tryGet();
   }
 
   /**
@@ -154,6 +154,8 @@ export class RingBuffer<T extends any | null> implements AsyncIterable<T> {
   close() {
     if (!this.#closed) {
       this.#closed = true;
+      // while(this.#readQueue.length > 0) this.#readQueue.shift()?.resolve();
+      // while(this.#readQueue.length > 0) this.#writeQueue.shift()?.resolve();
     }
   }
 

@@ -46,6 +46,7 @@ describe('ring buffer', () => {
       for( let i=0; i<10; i++)
         await rb.put(i)
       cp.resolve(true)
+      rb.close()
     }
     writer();
     expect(cp.isCompleted).toBeFalsy()
@@ -56,8 +57,8 @@ describe('ring buffer', () => {
       // console.log("got "+x)
       expect(x).toBe(i)
     }
-
-    expect(cp.isCompleted).toBeTruthy()
+    expect(await rb.get()).toBeUndefined();
+    expect(cp.isCompleted).toBeTruthy();
   })
 
 

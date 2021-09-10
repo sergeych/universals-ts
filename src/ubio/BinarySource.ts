@@ -1,18 +1,25 @@
 import { ICloseable } from "./ICloseable";
+import { Asio } from "./AsyncIOBase";
+import { BinarySink } from "./BinarySink";
 
 export interface IBinarySource extends AsyncIterable<number>, ICloseable {
   readByte(): Promise<number | null>;
 
-  readAdday(maxLength: number): Promise<Uint8Array>;
+  readArray(maxLength: number): Promise<Uint8Array>;
 }
 
-export class BinarySource implements IBinarySource, ICloseable {
+export interface IByteReader {
+  readByte(): Promise<number | null>;
+  close();
+}
+
+export class BinarySource extends Asio implements IBinarySource, ICloseable {
 
   async readByte(): Promise<number | null> {
     throw new Error("readByte() is not implemented");
   }
 
-  async readAdday(maxLength: number): Promise<Uint8Array> {
+  async readArray(maxLength: number): Promise<Uint8Array> {
     const result = new Uint8Array(maxLength);
     let i = 0;
     while (i < maxLength) {
@@ -39,6 +46,22 @@ export class BinarySource implements IBinarySource, ICloseable {
   }
 }
 
+export class ByteReaderSource extends BinarySource {
+  constructor(private reader: IByteReader) {
+    super()
+  }
+
+  override async readByte(): Promise<number|null> {
+    const rb = await this.reader.readByte();
+    return rb;
+  }
+
+  override async close() {
+    super.close();
+    this.reader.close();
+  }
+}
+
 export class ArraySource extends BinarySource {
 
   #position = 0;
@@ -47,8 +70,36 @@ export class ArraySource extends BinarySource {
     super();
   }
 
-  async readByte(): Promise<number | null> {
+  override async readByte(): Promise<number | null> {
     if (this.isClosed) return null;
     return this.#position < this.data.length ? this.data[this.#position++] : null;
   }
 }
+
+export class AsyncIterableChunkedSource extends BinarySource {
+  private iterator: AsyncIterator<Uint8Array>;
+  private chunk?: Uint8Array;
+  private position = 0;
+
+  constructor(ai: AsyncIterable<Uint8Array>,private onClose?: () => void) {
+    super();
+    this.iterator = ai[Symbol.asyncIterator]();
+  }
+
+  override async readByte(): Promise<number | null> {
+    if( this.chunk && this.position < this.chunk.length )
+      return this.chunk[this.position++];
+    const n = await this.iterator.next();
+    if( n.done ) return null;
+    this.chunk = n.value;
+    if( this.chunk.length == 0) return null;
+    this.position = 1;
+    return this.chunk[0]
+  }
+
+  override close(): Promise<void> {
+    if( !this.isClosed ) this.onClose?.()
+    return super.close();
+  }
+}
+

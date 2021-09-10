@@ -1,4 +1,4 @@
-import { RingBuffer } from "./RingBuffer";
+import { RingBuffer } from "../RingBuffer";
 
 const M = 16;
 const MASK = 0xFFFF;
