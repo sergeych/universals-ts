@@ -1,4 +1,4 @@
-import { BinarySource } from "../src/BinarySource";
+import { BinarySource } from "../src/ubio/BinarySource";
 import { readFromAsync } from "../src";
 import { RollingBlockMap } from "../src/RollingBlockMap";
 
