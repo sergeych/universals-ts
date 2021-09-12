@@ -147,6 +147,22 @@ export class RingBuffer<T extends any | null> implements AsyncIterable<T> {
   }
 
   /**
+   * Make a _copy_ of all _unread data_ in this RingBuffer. Does not change its state.
+   */
+  get snapshot(): T[] {
+    let s = this.size;
+    if( s == 0 ) return [];
+    const result = new Array<T>(s);
+    let index = 0;
+    let pos = this.#rpos;
+    while(index < s ) {
+      result[index++] = this.#data[pos]
+      pos = this.advance(pos);
+    }
+    return result;
+  }
+
+  /**
    * Closing buffer will prevent any further data insertion (put will throw, tryPut will return false). All the data
    * in buffer, and all enqueued async [[put]] calls will perform a expected, e.g. it is possible to read all remaining
    * data from closed buffer, but it is not possible to add any data to it.

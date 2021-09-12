@@ -98,5 +98,24 @@ describe('ring buffer', () => {
     }
   })
 
+  it("makes snapshots", () => {
+    const rb = new RingBuffer<number>(3);
+    rb.put(1)
+    rb.put(2)
+    rb.put(3)
+    expect(rb.snapshot).toEqual([1,2,3]);
+    rb.tryGet()
+    expect(rb.snapshot).toEqual([2,3]);
+    rb.tryPut(4)
+    expect(rb.snapshot).toEqual([2,3,4]);
+    rb.tryGet()
+    rb.tryGet()
+    expect(rb.snapshot).toEqual([4]);
+    rb.tryGet()
+    expect(rb.snapshot).toEqual([]);
+    rb.tryPut(10)
+    expect(rb.snapshot).toEqual([10]);
+  })
+
 
 });

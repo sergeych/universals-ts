@@ -35,7 +35,7 @@ export class RollingChecksum {
   constructor(readonly blockSize: number, startBlock?: Uint8Array) {
     const initialData = startBlock ? startBlock : new Uint8Array();
     if (blockSize != ~~blockSize) throw new Error("Block size must be integer");
-    if (blockSize < 256) throw new Error("Block size must be >= 256");
+    if (blockSize < 4) throw new Error("Block size must be >= 256");
     this.rb = new RingBuffer<number>(this.blockSize + 10);
 
     if (blockSize > initialData.length) {
@@ -69,6 +69,10 @@ export class RollingChecksum {
    */
   get digest(): number {
     return this.a + (this.b << M);
+  }
+
+  get buffer(): Uint8Array {
+    return Uint8Array.from(this.rb.snapshot);
   }
 
   /**

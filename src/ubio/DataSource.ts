@@ -104,4 +104,10 @@ export class DataSource {
   async readInt32OrThrow(): Promise<number> {
     return check(await this.readInt32());
   }
+
+  async readAll(): Promise<Uint8Array> {
+    const result = new Array<number>();
+    for await (const byte of this.source) result.push(byte)
+    return Uint8Array.from(result);
+  }
 }

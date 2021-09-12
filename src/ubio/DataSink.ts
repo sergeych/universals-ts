@@ -1,4 +1,4 @@
-import { ArraySink, BinarySink, IBinarySink } from "./BinarySink";
+import { IBinarySink } from "./BinarySink";
 import { crc32, textToBytes } from "unicrypto";
 import { ICloseable } from "./ICloseable";
 import { CrcLabel } from "../CrcLabel";
@@ -83,4 +83,5 @@ export class DataSink implements ICloseable, IBinarySink {
   writeFromAsync(source: AsyncIterable<number>): Promise<void> {
     return this.sink.writeFromAsync(source);
   }
+
 }

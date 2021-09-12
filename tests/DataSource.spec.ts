@@ -1,13 +1,8 @@
-import { ArraySource, BinarySource } from "../src/ubio/BinarySource";
-import { readFromAsync } from "../src";
-import { RollingBlockMap } from "../src/RollingBlockMap";
-import { DataSink } from "../src/ubio/DataSink";
-import { ArraySink } from "../src/ubio/BinarySink";
-import { DataSource } from "../src/ubio/DataSource";
 import { BinaryPipe } from "../src/ubio/BinaryPipe";
 import { DataPipe } from "../src/ubio/DataPipe";
 import { MemoryDataSink } from "../src/ubio/MemoryDataSink";
 import { MemoryDataSource } from "../src/ubio/MemoryDataSource";
+import { readArraySource } from "../src/ubio/RandomAccessSource";
 
 describe('binary source', () => {
 
@@ -24,8 +19,10 @@ describe('binary source', () => {
     expect(await input.readByte()).toBe(3)
     expect(await input.readByte()).toBe(4)
 
-    const p5 = input.readByte();
-    const p6 = input.readByte();
+    // will read past end?
+    input.readByte();
+    input.readByte();
+
     output.writeByte(5);
     output.close();
     expect(await input.readByte()).toBe(5)
@@ -81,6 +78,16 @@ describe('binary source', () => {
     const inp = new MemoryDataSource(out.buffer)
     expect(await inp.readUint()).toBe(177170);
     expect(await inp.readString()).toBe("Super sense");
-  })
+
+    const source = readArraySource(Uint8Array.of(0,1,2,3,4,5,6,7,8,9));
+
+    expect(await source.readData().readAll()).toEqual(Uint8Array.of(0,1,2,3,4,5,6,7,8,9))
+    expect(await source.readData(7).readAll()).toEqual(Uint8Array.of(7,8,9))
+    expect(await source.readData(5,8).readAll()).toEqual(Uint8Array.of(5,6,7))
+
+    const out2 = new MemoryDataSink();
+    await out2.writeFromAsync(source.readBinary(3,6));
+    expect(out2.buffer).toEqual(Uint8Array.of(3,4,5));
+  });
 
 });
