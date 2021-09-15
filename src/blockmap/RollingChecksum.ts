@@ -51,7 +51,7 @@ export class RollingChecksum {
       const x = initialData[i];
       s1 += x;
       s2 += (this.l - i + 1) * x
-      this.rb.put(x)
+      this.rb.tryPut(x)
     }
     this.k = 0;
     this.a = s1 & MASK;

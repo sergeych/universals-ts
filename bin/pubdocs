@@ -2,7 +2,7 @@
 
 # Exit with error message
 error() {
-    echo Error: $1
+    echo "Error: $1"
     exit 100
 }
 

@@ -1,18 +1,18 @@
-import { ICloseable } from "./ICloseable";
+import { AsyncClosable } from "./AsyncClosable";
 import { Asio } from "./AsyncIOBase";
 
-export interface IBinarySource extends AsyncIterable<number>, ICloseable {
+export interface IBinarySource extends AsyncIterable<number>, AsyncClosable {
   readByte(): Promise<number | null>;
 
   readArray(maxLength: number): Promise<Uint8Array>;
 }
 
-export interface IByteReader {
+export interface IByteReader extends AsyncClosable {
   readByte(): Promise<number | null>;
   close();
 }
 
-export class BinarySource extends Asio implements IBinarySource, ICloseable {
+export class BinarySource extends Asio implements IBinarySource {
 
   async readByte(): Promise<number | null> {
     throw new Error("readByte() is not implemented");
@@ -37,7 +37,7 @@ export class BinarySource extends Asio implements IBinarySource, ICloseable {
   [Symbol.asyncIterator](): AsyncIterator<number> {
     const self = this;
     return {
-      async next(): Promise<IteratorResult<number, any>> {
+      async next(): Promise<IteratorResult<number>> {
         const value = await self.readByte();
         return value !== null ?{ done: false, value } : { done: true, value};
       }
@@ -55,8 +55,8 @@ export class ByteReaderSource extends BinarySource {
   }
 
   override async close() {
-    super.close();
-    this.reader.close();
+    await this.reader.close();
+    await super.close();
   }
 }
 

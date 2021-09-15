@@ -1,8 +1,10 @@
-import { BinaryPipe } from "../src/ubio/BinaryPipe";
-import { DataPipe } from "../src/ubio/DataPipe";
-import { MemoryDataSink } from "../src/ubio/MemoryDataSink";
-import { MemoryDataSource } from "../src/ubio/MemoryDataSource";
-import { readArraySource } from "../src/ubio/RandomAccessSource";
+// noinspection ES6MissingAwait
+
+import { BinaryPipe } from "../src";
+import { DataPipe } from "../src";
+import { MemoryDataSink } from "../src";
+import { MemoryDataSource } from "../src";
+import { readArraySource } from "../src";
 
 describe('binary source', () => {
 
@@ -50,6 +52,10 @@ describe('binary source', () => {
     expect(await inp.readByte()).toBe(0xff);
     expect(await inp.readByte()).toBe(0xfb);
     expect(await inp.readByte()).toBe(0xfa);
+
+    out.writeInt32(659030690);
+    expect(await inp.readInt32()).toBe(659030690);
+
   });
 
   it("writes variable length uints", async () => {

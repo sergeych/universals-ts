@@ -1,6 +1,6 @@
-import { ICloseable } from "./ICloseable";
+import { AsyncClosable } from "./AsyncClosable";
 
-export class Asio implements ICloseable{
+export class Asio implements AsyncClosable{
   #closed = false
 
   close(): Promise<void> {

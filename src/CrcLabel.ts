@@ -1,5 +1,5 @@
 import { IBinarySink } from "./ubio/BinarySink";
-import { BinarySource, IBinarySource } from "./ubio/BinarySource";
+import { IBinarySource } from "./ubio/BinarySource";
 import { crc32, textToBytes } from "unicrypto";
 import { equalArrays } from "./tools";
 import { DataFormatError } from "./ubio/DataSource";

@@ -1,28 +1,24 @@
-import { BinarySource, ByteReaderSource, IBinarySource } from "./BinarySource";
-import { BinarySink, ByteWriterSink, IBinarySink } from "./BinarySink";
+import { ByteReaderSource, IBinarySource } from "./BinarySource";
+import { ByteWriterSink, IBinarySink } from "./BinarySink";
 import { RingBuffer } from "../RingBuffer";
 
 export class BinaryPipe {
-
-  private constructor() {
-  }
 
   static create(bufferSize = 1024): [IBinarySource,IBinarySink] {
     const ringBuffer = new RingBuffer<number>(bufferSize);
     const output = new ByteWriterSink({
       writeByte: async (x) => {
-        ringBuffer.put(x)
+        await ringBuffer.put(x)
       },
-      close() {
+      async close(): Promise<void> {
         ringBuffer.close();
       }
     });
     const input = new ByteReaderSource({
       readByte: async () => {
-        const x = (await ringBuffer.get()) ?? null;
-        return x;
+        return (await ringBuffer.get()) ?? null;
       },
-      close() {
+      async close(): Promise<void> {
         ringBuffer.close();
       }
     });

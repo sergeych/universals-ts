@@ -163,6 +163,18 @@ export class RingBuffer<T extends any | null> implements AsyncIterable<T> {
   }
 
   /**
+   * Read all the data from the buffer emptying it.
+   */
+  readAll(): T[] {
+    let byte;
+    const result = new Array<T>(this.size);
+    let index = 0;
+    while( (byte = this.tryGet()) !== undefined )
+      result[index++] = byte;
+    return result;
+  }
+
+  /**
    * Closing buffer will prevent any further data insertion (put will throw, tryPut will return false). All the data
    * in buffer, and all enqueued async [[put]] calls will perform a expected, e.g. it is possible to read all remaining
    * data from closed buffer, but it is not possible to add any data to it.

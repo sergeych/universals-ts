@@ -1,7 +1,7 @@
-import { ICloseable } from "./ICloseable";
+import { AsyncClosable } from "./AsyncClosable";
 import { Asio } from "./AsyncIOBase";
 
-export interface IBinarySink extends ICloseable {
+export interface IBinarySink extends AsyncClosable {
   writeByte(byte: number): Promise<void>;
 
   writeArray(data: ArrayLike<number>): Promise<void>;
@@ -14,13 +14,13 @@ export interface IBinarySink extends ICloseable {
 export class SinkClosedError extends Error {
   code = "sink_closed"
 
-  constructor() {
-    super("sink is closed");
+  constructor(text="sink is closed") {
+    super(text);
   }
 }
 
-export interface IByteWriter {
-  close();
+export interface IByteWriter extends AsyncClosable{
+  close(): Promise<void>;
   writeByte(byte: number): Promise<void>;
 }
 
@@ -59,23 +59,22 @@ export class ByteWriterSink extends BinarySink {
   }
 
   override async close(): Promise<void> {
-    this.byteWriter.close();
-    super.close();
+    await this.byteWriter.close();
+    await super.close();
   }
 }
 
 class BufferSinkFull extends Error {
-  code = "biffer_sink_full"
+  code = "buffer_sink_full"
 
   constructor() {
     super("buffer sink is full");
 
   }
-
 }
 
 export class ArraySink extends BinarySink {
-  #data: number[];
+  readonly #data: number[];
   #position = 0;
 
   constructor(readonly capacity?: number) {

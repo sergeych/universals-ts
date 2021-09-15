@@ -42,8 +42,7 @@ export class CompletablePromise<T> implements Promise<T> {
 
   /**
    * Set promise to rejected state.
-   * @param result
-   * @throws Error if already completed
+   * @param error to report with rejection
    */
   reject(error?: any) {
     if( this.#isCompleted ) throw "already completed";

@@ -1,10 +1,11 @@
 import { BlockMap } from "./BlockMap";
-import { BinarySource } from "../ubio/BinarySource";
+import { IBinarySource } from "../ubio/BinarySource";
 import { RollingChecksum } from "./RollingChecksum";
 import { equalArrays } from "../tools";
 import { SHA, unicryptoReady } from "unicrypto";
 import { RandomAccessSource } from "../ubio/RandomAccessSource";
 import { IBinarySink } from "../ubio/BinarySink";
+import { getFileName } from "../string_tools";
 
 export interface SyncStep {
   type: "existing" | "new";
@@ -38,7 +39,8 @@ function optimize(source: SyncStep[]) {
   return optimizeLastBlock(unionAdjacents(source));
 }
 
-export async function buildSyncSequence(blockMap: BlockMap, existingSource: BinarySource): Promise<SyncStep[]> {
+export async function buildSyncSequence(blockMap: BlockMap, existingSource: IBinarySource,
+                                        progressCallback?: (ready, total) => void): Promise<SyncStep[]> {
 
   // new file is empty?
   if (blockMap.length == 0)
@@ -47,13 +49,18 @@ export async function buildSyncSequence(blockMap: BlockMap, existingSource: Bina
   const blockSize = blockMap.blockSize;
   const hashType = blockMap.hashType;
   const result = new Array<SyncStep>();
+  const reportWindow = 1024 * 1024;
   await unicryptoReady;
 
-  // 1 scan for existing poritions of a new blockmap:
-  const map = new Map<number, { index: number, hash: Uint8Array }>()
+  // 1 scan for existing poritions of a new blockmap
+  // map for faset search of exising blocks:
+  const map = new Map<number, [{ index: number, hash: Uint8Array }]>()
   let index = 0;
   for (const b of blockMap.blocks) {
-    map.set(b.rcs, { hash: b.hash, index });
+    let list = map.get(b.rcs);
+    const item = { hash: b.hash, index };
+    if (list == undefined) map.set(b.rcs, [item])
+    else list.push(item)
     index++;
   }
 
@@ -62,15 +69,22 @@ export async function buildSyncSequence(blockMap: BlockMap, existingSource: Bina
   let sourceOffset = 0;
 
   function check() {
-    const block = map.get(rcs.digest);
-    if (block && equalArrays(block.hash, SHA.getDigestSync(hashType, rcs.buffer)))
-      existingBlocks.set(block.index, { type: "existing", from: sourceOffset, to: sourceOffset + rcs.buffer.length });
+    const blocks = map.get(rcs.digest);
+    if (blocks) {
+      for (const block of blocks) {
+        if (equalArrays(block.hash, SHA.getDigestSync(hashType, rcs.buffer))) {
+          existingBlocks.set(block.index, { type: "existing", from: sourceOffset, to: sourceOffset + blockSize });
+        }
+      }
+    }
   }
 
   check();
   for await (const byte of existingSource) {
     rcs.update(byte)
     sourceOffset++;
+    if (progressCallback && sourceOffset % reportWindow == 0)
+      progressCallback(sourceOffset, blockMap.length);
     check();
   }
 
@@ -92,23 +106,46 @@ export async function buildSyncSequence(blockMap: BlockMap, existingSource: Bina
   return optimize(result);
 }
 
-export async function executeSequence(existing: RandomAccessSource,actual: RandomAccessSource,
+export async function executeSequence(existing: RandomAccessSource, actual: RandomAccessSource,
                                       output: IBinarySink, steps: SyncStep[]): Promise<void> {
-  for(const s of steps) {
+  for (const s of steps) {
     let source;
     switch (s.type) {
       case "new":
-        source = actual.readBinary(s.from,s.to)
+        source = actual.readBinary(s.from, s.to)
         break
       case "existing":
         source = existing.readBinary(s.from, s.to)
         break
       default:
-        throw new Error("invalid step type: "+s);
+        throw new Error("invalid step type: " + s);
     }
     await output.writeFromAsync(source);
   }
 }
 
+export class Synchronizer {
+  private readonly _existingPath: string;
+  private readonly _mapPath: string;
+  readonly sourceUrl: URL;
+
+  get existingPath(): string {
+    return this._existingPath;
+  }
+
+  get mapPath(): string {
+    return this._mapPath;
+  }
+
+  constructor(readonly sourcePath: string, pathToExisting?, pathToMap?: string) {
+    this._existingPath = pathToExisting ? pathToExisting : getFileName(sourcePath);
+    if (pathToMap)
+      this._mapPath = pathToMap;
+    this.sourceUrl = new URL(sourcePath);
+    if (!this._mapPath) {
+      this._mapPath = this.sourceUrl.pathname;
+    }
+  }
+}
 
 

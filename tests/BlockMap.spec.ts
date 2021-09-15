@@ -1,18 +1,18 @@
-import { readFileSource } from "../src/ubio/readFileSource";
-import { BlockMap } from "../src/blockmap/BlockMap";
-import { MemoryDataSink } from "../src/ubio/MemoryDataSink";
-import { MemoryDataSource } from "../src/ubio/MemoryDataSource";
-import { ArraySource } from "../src/ubio/BinarySource";
-import { buildSyncSequence, executeSequence } from "../src/blockmap/Synchronizer";
-import { readArraySource } from "../src/ubio/RandomAccessSource";
+import { readFileSource } from "../src";
+import { BlockMap } from "../src";
+import { MemoryDataSink } from "../src";
+import { MemoryDataSource } from "../src";
+import { ArraySource } from "../src";
+import { buildSyncSequence, executeSequence } from "../src";
+import { readArraySource } from "../src";
 
 describe('rollingBlockMap', () => {
 
   it("scans and equals", async () => {
-    const s = readFileSource("./tests/fixtures/sample_file.lock").readBinary();
+    const s = (await readFileSource("./tests/fixtures/sample_file.lock")).readBinary();
     const bm = await BlockMap.scan(s);
     await s.close()
-    const bm1 = await BlockMap.scan(readFileSource("./tests/fixtures/sample_file.lock").readBinary());
+    const bm1 = await BlockMap.scan((await readFileSource("./tests/fixtures/sample_file.lock")).readBinary());
     expect(bm1.equalsTo(bm)).toBeTruthy();
     const out = new MemoryDataSink();
     await bm.writeTo(out);
@@ -26,6 +26,9 @@ describe('rollingBlockMap', () => {
     const data1 = Uint8Array.of(1,2,3,4,5,6,7,8,9,10);
     const map1 = await BlockMap.scan(new ArraySource(data1), 4);
     const seq1 = await buildSyncSequence(map1, new ArraySource(data1));
+
+    console.log(seq1)
+
     expect(seq1).toEqual([{ type: 'existing', from: 0, to: 10 }]);
 
     let data2 = Uint8Array.of( 1,2,3,4,5 )
@@ -62,10 +65,6 @@ describe('rollingBlockMap', () => {
     seq2 = await buildSyncSequence(map1, new ArraySource(data2));
     await executeSequence(existing,actual,result,seq2);
     expect(result.buffer).toEqual(data1);
-
-    // let s = readFileSource("./fixtures/sample_file.lock");
-    // const bm = await BlockMap.scan(s);
-    // s = readFileSource("./sample_file.lock");
   });
 
 });

@@ -1,17 +1,15 @@
 import { IBinarySink } from "./BinarySink";
 import { crc32, textToBytes } from "unicrypto";
-import { ICloseable } from "./ICloseable";
 import { CrcLabel } from "../CrcLabel";
 
-export class DataSink implements ICloseable, IBinarySink {
+export class DataSink implements IBinarySink {
+
   constructor(protected sink: IBinarySink) {
   }
 
   close(): Promise<void> {
     return this.sink.close()
   }
-
-  get isClosed(): boolean { return this.sink.isClosed; }
 
   async writeUint(n: number): Promise<void> {
     let rest = Math.floor(n); // could be >32bi long

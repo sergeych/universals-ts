@@ -1,3 +1,5 @@
+// noinspection ES6MissingAwait
+
 import { CompletablePromise, readFromAsync, RingBuffer } from "../src";
 
 describe('ring buffer', () => {

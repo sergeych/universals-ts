@@ -13,10 +13,10 @@ export class BlockSignature {
     Object.assign(this, props);
   }
 
-  static of(block: Uint8Array): BlockSignature {
+  static of(block: Uint8Array,hashType: SHAStringType): BlockSignature {
     return new BlockSignature({
       rcs: RollingChecksum.ofBlock(block),
-      hash: SHA.getDigestSync("sha3_256", block)
+      hash: SHA.getDigestSync(hashType, block)
     });
   }
 
@@ -117,18 +117,21 @@ export class BlockMap {
    * @param source to build blockmap of
    * @param blockSize
    * @param hash algorithm, need one supported by unicrypto and 256 bits long, we use sha3_256 or sha256
+   * @param progressReport optional callvack will periodically be called with number of bytes processed.
    */
-  static async scan(source: IBinarySource, blockSize = 1024, hash: SHAStringType = "sha3_256"): Promise<BlockMap> {
+  static async scan(source: IBinarySource, blockSize = 1024, hash: SHAStringType = "sha3_256",
+                    progressReport?: (number)=>void): Promise<BlockMap> {
     await unicryptoReady;
     const result = new Array<BlockSignature>();
     const block = await source.readArray(blockSize);
     let length = block.length;
+    const reportingSize = 1024 * 1024;
 
     function addBlock(rcs: RollingChecksum) {
       result.push(new BlockSignature(
         {
           rcs: rcs.digest,
-          hash: SHA.getDigestSync("sha3_256", rcs.buffer)
+          hash: SHA.getDigestSync(hash, rcs.buffer)
         }
       ));
     }
@@ -141,6 +144,7 @@ export class BlockMap {
         // slide input bytes and add blocks on boundaries:
         if (length++ % blockSize == 0) addBlock(rcs);
         rcs.update(byte);
+        if( progressReport && length % reportingSize == 0 ) progressReport(length);
       }
       // there could be last, overlapping block:
       if (rcs.buffer.length > 0) addBlock(rcs);

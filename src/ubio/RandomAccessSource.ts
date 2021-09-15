@@ -1,14 +1,14 @@
-import { BinarySource, ByteReaderSource } from "./BinarySource";
+import { ByteReaderSource, IBinarySource } from "./BinarySource";
 import { DataSource } from "./DataSource";
 import ArrayLike = jasmine.ArrayLike;
 
-export type BinarySourceFactory = (from: number, to?: number) => BinarySource;
+export type BinarySourceFactory = (from: number, to?: number) => IBinarySource;
 
 export class RandomAccessSource {
   constructor(protected factory: BinarySourceFactory) {
   }
 
-  readBinary(from: number = 0, to?: number): BinarySource {
+  readBinary(from: number = 0, to?: number): IBinarySource {
     return this.factory(from, to);
   }
 
